@@ -42,7 +42,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.camera.view)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -62,4 +61,5 @@ dependencies {
     implementation("androidx.camera:camera-extensions:${camerax_version}")
     implementation("androidx.camera:camera-mlkit-vision:1.2.3")
     implementation("com.google.mlkit:barcode-scanning:17.1.0")
+    implementation("androidx.appcompat:appcompat:1.4.0")
 }
