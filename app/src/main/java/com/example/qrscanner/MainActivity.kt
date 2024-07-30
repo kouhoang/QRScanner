@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -16,14 +15,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
-import java.io.File
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalGetImage::class)
 class MainActivity : AppCompatActivity() {
@@ -31,7 +24,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var captureButton: Button
     private lateinit var libraryButton: Button
     private lateinit var imageCapture: ImageCapture
-    private lateinit var barcodeScanner: BarcodeScanner
+    private lateinit var pickImageLauncher: ActivityResultLauncher<Intent>
 
     private val REQUEST_CODE_PERMISSIONS = 1001
     private val REQUIRED_PERMISSIONS =
@@ -41,8 +34,6 @@ class MainActivity : AppCompatActivity() {
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
         )
 
-    private lateinit var pickImageLauncher: ActivityResultLauncher<Intent>
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -51,8 +42,6 @@ class MainActivity : AppCompatActivity() {
         captureButton = findViewById(R.id.captureButton)
         libraryButton = findViewById(R.id.library)
 
-        barcodeScanner = BarcodeScanning.getClient()
-
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -60,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         captureButton.setOnClickListener { takePhoto() }
+        libraryButton.setOnClickListener { openImagePicker() }
 
         pickImageLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -69,8 +59,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-
-        libraryButton.setOnClickListener { openImagePicker() }
     }
 
     private fun startCamera() {
@@ -90,7 +78,20 @@ class MainActivity : AppCompatActivity() {
 
                 val analysisUseCase =
                     ImageAnalysis.Builder().build().also {
-                        it.setAnalyzer(ContextCompat.getMainExecutor(this), BarcodeAnalyzer())
+                        it.setAnalyzer(
+                            ContextCompat.getMainExecutor(this),
+                            BarcodeAnalyzer { barcode ->
+                                val url = barcode.rawValue
+                                if (url != null && url.startsWith("http")) {
+                                    // Open URL
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    startActivity(intent)
+                                } else {
+                                    // Show QR content
+                                    Toast.makeText(this, url, Toast.LENGTH_LONG).show()
+                                }
+                            },
+                        )
                     }
 
                 cameraProvider.unbindAll()
@@ -100,38 +101,8 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private inner class BarcodeAnalyzer : ImageAnalysis.Analyzer {
-        @androidx.annotation.OptIn(ExperimentalGetImage::class)
-        override fun analyze(image: ImageProxy) {
-            val mediaImage = image.image
-            if (mediaImage != null) {
-                val inputImage = InputImage.fromMediaImage(mediaImage, image.imageInfo.rotationDegrees)
-                barcodeScanner
-                    .process(inputImage)
-                    .addOnSuccessListener { barcodes ->
-                        for (barcode in barcodes) {
-                            val url = barcode.rawValue
-                            if (url != null && url.startsWith("http")) {
-                                // Open URL
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                startActivity(intent)
-                            } else {
-                                // Show QR content
-                                Toast.makeText(this@MainActivity, url, Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    }.addOnFailureListener { e ->
-                        // Handle error
-                        e.printStackTrace()
-                    }.addOnCompleteListener {
-                        image.close() // Important to close the image to avoid memory leaks
-                    }
-            }
-        }
-    }
-
     private fun takePhoto() {
-        val photoFile = createFile()
+        val photoFile = createImageFile(this)
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
         imageCapture.takePicture(
@@ -151,15 +122,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openImagePicker() {
-        val intent = Intent(Intent.ACTION_PICK)
-        intent.type = "image/*"
-        pickImageLauncher.launch(intent)
+        pickImageLauncher.launch(openImagePickerIntent())
     }
 
     private fun scanImage(uri: Uri) {
-        val image = InputImage.fromFilePath(this, uri)
+        val image = getImageFromUri(this, uri)
 
-        barcodeScanner
+        BarcodeScanning
+            .getClient()
             .process(image)
             .addOnSuccessListener { barcodes ->
                 for (barcode in barcodes) {
@@ -179,23 +149,14 @@ class MainActivity : AppCompatActivity() {
                 } catch (ex: IOException) {
                     // Handle IO Exception
                     Toast.makeText(this, "IO Error: ${ex.localizedMessage}", Toast.LENGTH_LONG).show()
-                    ex.printStackTrace()
                 } catch (ex: SecurityException) {
                     // Handle Security Exception
                     Toast.makeText(this, "Security Error: ${ex.localizedMessage}", Toast.LENGTH_LONG).show()
-                    ex.printStackTrace()
                 } catch (ex: Exception) {
                     // Handle General Exception
                     Toast.makeText(this, "Error: ${ex.localizedMessage}", Toast.LENGTH_LONG).show()
-                    ex.printStackTrace()
                 }
             }
-    }
-
-    private fun createFile(): File {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile("JPEG_${timestamp}_", ".jpg", storageDir)
     }
 
     private fun allPermissionsGranted() =
