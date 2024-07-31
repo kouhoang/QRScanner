@@ -45,3 +45,7 @@ QRScanner là một ứng dụng Android cho phép người dùng quét mã QR b
   
 4. **Chụp ảnh và lưu vào thư viện ảnh**:
    - Khi bấm nút chụp ảnh, ảnh sẽ tự động lưu vào thư mục Dowloads của máy (Có thông báo ảnh có lưu thành công hay không).
+
+## Video demo
+[![Watch the video](https://img.youtube.com/vi/OimZ0zWttPg/0.jpg)](https://www.youtube.com/shorts/OimZ0zWttPg)
+
