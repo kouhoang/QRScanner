@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package com.example.qrscanner
 
 import android.app.Activity
@@ -28,7 +30,6 @@ import java.io.File
 import java.io.IOException
 import java.util.*
 
-@OptIn(ExperimentalGetImage::class)
 class MainActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var captureButton: Button
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
         )
 
+    // Launcher để chọn ảnh từ thư viện
     private lateinit var pickImageLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,7 +68,8 @@ class MainActivity : AppCompatActivity() {
         captureButton.setOnClickListener { takePhoto() }
 
         pickImageLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) // Lắng nghe kết quả từ thư viện ảnh
+            { result ->
                 if (result.resultCode == Activity.RESULT_OK) {
                     result.data?.data?.let { uri ->
                         scanImage(uri)
@@ -79,7 +82,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        lastUrl = null // Reset lastUrl when returning to the app
+        lastUrl = null // Reset lastUrl khi quay lại ứng dụng
     }
 
     private fun startCamera() {
@@ -114,6 +117,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    // Kiểm tra mã QR có phải là link
     private fun handleBarcodeDetected(barcode: String) {
         if (barcode.startsWith("http") && barcode != lastUrl) {
             lastUrl = barcode
@@ -134,6 +138,7 @@ class MainActivity : AppCompatActivity() {
             outputOptions,
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
+                @RequiresApi(Build.VERSION_CODES.Q)
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     scanImage(Uri.fromFile(photoFile))
                     addImageToDownloads(photoFile)
@@ -148,21 +153,14 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-//    private fun createFile(): File {
-//        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-//        val storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-//        if (!storageDir.exists()) {
-//            storageDir.mkdirs()
-//        }
-//        return File(storageDir, "JPEG_${timestamp}_.jpg")
-//    }
-
+    // Tạo file tạm thời để lưu ảnh chụp
     private fun createTempFile(): File {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         return File.createTempFile("JPEG_${timestamp}_", ".jpg", storageDir)
     }
 
+    // Thêm ảnh vào thư mục Tải xuống
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun addImageToDownloads(photoFile: File) {
         val values =
@@ -179,7 +177,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 contentResolver.openOutputStream(uri)?.use { outputStream ->
                     photoFile.inputStream().use { inputStream ->
-                        inputStream.copyTo(outputStream)
+                        inputStream.copyTo(outputStream) // Sao chép dữ liệu từ file ảnh vào uri
                     }
                 }
 
@@ -224,6 +222,7 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    // Kiểm tra xem tất cả các quyền đã được cấp hay chưa
     private fun allPermissionsGranted() =
         REQUIRED_PERMISSIONS.all {
             ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
@@ -245,6 +244,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Phân tích mã vạch
     private inner class BarcodeAnalyzer(
         private val onBarcodeDetected: (String) -> Unit,
     ) : ImageAnalysis.Analyzer {
