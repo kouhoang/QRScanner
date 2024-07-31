@@ -42,3 +42,6 @@ QRScanner là một ứng dụng Android cho phép người dùng quét mã QR b
 3. **Xem và mở liên kết từ mã QR**:
    - Khi mã QR chứa URL được phát hiện, một hộp thoại sẽ hiển thị URL đó.
    - Nhấn nút "Open Link" để mở URL trong trình duyệt.
+  
+4. **Chụp ảnh và lưu vào thư viện ảnh**:
+   - Khi bấm nút chụp ảnh, ảnh sẽ tự động lưu vào thư mục Dowloads của máy (Có thông báo ảnh có lưu thành công hay không).
